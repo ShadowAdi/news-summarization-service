@@ -27,14 +27,17 @@ export class ArticlesController {
   }
 
   @Get(':title')
-  findOne(@Param() params: Record<string, string>): Articles | undefined {
-    console.log(params.title);
-    return this.articlesService.findOne(params.title);
+  findOne(@Param('title') title: string): Articles | undefined {
+    console.log(title);
+    return this.articlesService.findOne(title);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCatDto: UpdateArticleDto) {
-    return `This action updates an #${id} article`;
+  @Patch(':title')
+  update(
+    @Param('title') title: string,
+    @Body() updateCatDto: UpdateArticleDto,
+  ): Articles | null {
+    return this.articlesService.update(title, updateCatDto);
   }
 
   @Delete(':id')

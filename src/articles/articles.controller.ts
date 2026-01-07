@@ -26,6 +26,11 @@ export class ArticlesController {
     return this.articlesService.create(createArticleDto);
   }
 
+  @Get('/get-summary/:id')
+  async getSummary(@Param('id') id: string): Promise<string> {
+    return this.articlesService.getSummary(id);
+  }
+
   @Get('by-title/:title')
   async findByTitle(@Param('title') title: string): Promise<Article> {
     return this.articlesService.findByTitle(title);

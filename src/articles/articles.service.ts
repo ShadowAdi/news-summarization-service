@@ -36,15 +36,27 @@ export class ArticleService {
     return article;
   }
 
-  async update(id: string, updateArticleDto: UpdateArticleDto): Promise<Article> {
+  async update(
+    id: string,
+    updateArticleDto: UpdateArticleDto,
+  ): Promise<Article> {
     const updatedArticle = await this.articleModel
       .findByIdAndUpdate(id, updateArticleDto, { new: true })
       .exec();
-    
+
     if (!updatedArticle) {
       throw new NotFoundException(`Article with ID "${id}" not found`);
     }
     return updatedArticle;
+  }
+
+  async getSummary(id: string): Promise<string> {
+    const article = await this.articleModel.findById(id).exec();
+    if (!article) {
+      throw new NotFoundException(`Article with ID "${id}" not found`);
+    }
+
+    return '';
   }
 
   async remove(id: string): Promise<Article> {

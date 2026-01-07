@@ -40,8 +40,8 @@ export class ArticlesController {
     return this.articlesService.update(title, updateCatDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return `This action removes a #${id} article`;
+  @Delete(':title')
+  remove(@Param('title') title: string): Articles[] {
+    return this.articlesService.remove(title);
   }
 }

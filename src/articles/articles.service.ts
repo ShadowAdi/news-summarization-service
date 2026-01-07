@@ -163,7 +163,7 @@ export class ArticleService {
       const prompt = `Please summarize the following news article in 60-80 words. Maintain the original language of the article (do not translate). Provide a concise, informative summary that captures the main points:\n\n${content}`;
 
       const completion = await this.openai.chat.send({
-        model: 'meta-llama/llama-3.2-3b-instruct:free', // Using a free model for testing
+        model: 'deepseek/deepseek-v3.2', // Using a free model for testing
         messages: [
           {
             role: 'user',

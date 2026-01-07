@@ -26,10 +26,10 @@ export class ArticlesController {
     return this.articlesService.create(createArticleDto);
   }
 
-  @Get(':id')
-  findOne(@Param() params: Record<string, string>): string {
-    console.log(params.id);
-    return `This action returns a #${params.id} article`;
+  @Get(':title')
+  findOne(@Param() params: Record<string, string>): Articles | undefined {
+    console.log(params.title);
+    return this.articlesService.findOne(params.title);
   }
 
   @Patch(':id')

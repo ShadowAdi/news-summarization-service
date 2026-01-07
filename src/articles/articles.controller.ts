@@ -9,17 +9,21 @@ import {
 } from '@nestjs/common';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
+import { ArticleService } from './articles.service';
+import { Articles } from './interfaces/article.interface';
 
 @Controller('articles')
 export class ArticlesController {
+  constructor(private articlesService: ArticleService) {}
+
   @Get()
-  findAll(): string {
-    return 'This is to get Articles';
+  findAll(): Articles[] {
+    return this.articlesService.findAll();
   }
 
   @Post()
-  create(@Body() createArticleDto: CreateArticleDto): string {
-    return 'This action adds a new articles';
+  create(@Body() createArticleDto: CreateArticleDto): Articles | undefined {
+    return this.articlesService.create(createArticleDto);
   }
 
   @Get(':id')

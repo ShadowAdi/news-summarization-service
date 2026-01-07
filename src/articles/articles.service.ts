@@ -1,33 +1,57 @@
-import { Injectable } from '@nestjs/common';
-import { Articles } from './interfaces/article.interface';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Article, ArticleDocument } from './schemas/article.schema';
+import { CreateArticleDto } from './dto/create-article.dto';
+import { UpdateArticleDto } from './dto/update-article.dto';
 
 @Injectable()
 export class ArticleService {
-  private readonly articles: Articles[] = [];
+  constructor(
+    @InjectModel(Article.name) private articleModel: Model<ArticleDocument>,
+  ) {}
 
-  create(article: Articles) {
-    this.articles.push(article);
-    return this.articles.find((a) => a.title === article.title);
+  async create(createArticleDto: CreateArticleDto): Promise<Article> {
+    const createdArticle = new this.articleModel(createArticleDto);
+    return createdArticle.save();
   }
 
-  findAll(): Articles[] {
-    return this.articles;
+  async findAll(): Promise<Article[]> {
+    return this.articleModel.find().exec();
   }
 
-  findOne(title: string) {
-    return this.articles.find((article) => article.title === title);
-  }
-
-  remove(title: string) {
-    return this.articles.filter((article) => article.title === title);
-  }
-
-  update(title: string, updateArticle: Partial<Articles>) {
-    const article = this.articles.find((article) => article.title === title);
+  async findOne(id: string): Promise<Article> {
+    const article = await this.articleModel.findById(id).exec();
     if (!article) {
-      return null;
+      throw new NotFoundException(`Article with ID "${id}" not found`);
     }
-    Object.assign(article, updateArticle);
     return article;
+  }
+
+  async findByTitle(title: string): Promise<Article> {
+    const article = await this.articleModel.findOne({ title }).exec();
+    if (!article) {
+      throw new NotFoundException(`Article with title "${title}" not found`);
+    }
+    return article;
+  }
+
+  async update(id: string, updateArticleDto: UpdateArticleDto): Promise<Article> {
+    const updatedArticle = await this.articleModel
+      .findByIdAndUpdate(id, updateArticleDto, { new: true })
+      .exec();
+    
+    if (!updatedArticle) {
+      throw new NotFoundException(`Article with ID "${id}" not found`);
+    }
+    return updatedArticle;
+  }
+
+  async remove(id: string): Promise<Article> {
+    const deletedArticle = await this.articleModel.findByIdAndDelete(id).exec();
+    if (!deletedArticle) {
+      throw new NotFoundException(`Article with ID "${id}" not found`);
+    }
+    return deletedArticle;
   }
 }

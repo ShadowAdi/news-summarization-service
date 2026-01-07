@@ -10,38 +10,42 @@ import {
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { ArticleService } from './articles.service';
-import { Articles } from './interfaces/article.interface';
+import { Article } from './schemas/article.schema';
 
 @Controller('articles')
 export class ArticlesController {
   constructor(private articlesService: ArticleService) {}
 
   @Get()
-  findAll(): Articles[] {
+  async findAll(): Promise<Article[]> {
     return this.articlesService.findAll();
   }
 
   @Post()
-  create(@Body() createArticleDto: CreateArticleDto): Articles | undefined {
+  async create(@Body() createArticleDto: CreateArticleDto): Promise<Article> {
     return this.articlesService.create(createArticleDto);
   }
 
-  @Get(':title')
-  findOne(@Param('title') title: string): Articles | undefined {
-    console.log(title);
-    return this.articlesService.findOne(title);
+  @Get('by-title/:title')
+  async findByTitle(@Param('title') title: string): Promise<Article> {
+    return this.articlesService.findByTitle(title);
   }
 
-  @Patch(':title')
-  update(
-    @Param('title') title: string,
-    @Body() updateCatDto: UpdateArticleDto,
-  ): Articles | null {
-    return this.articlesService.update(title, updateCatDto);
+  @Get(':id')
+  async findOne(@Param('id') id: string): Promise<Article> {
+    return this.articlesService.findOne(id);
   }
 
-  @Delete(':title')
-  remove(@Param('title') title: string): Articles[] {
-    return this.articlesService.remove(title);
+  @Patch(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() updateArticleDto: UpdateArticleDto,
+  ): Promise<Article> {
+    return this.articlesService.update(id, updateArticleDto);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string): Promise<Article> {
+    return this.articlesService.remove(id);
   }
 }

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
+import { SummaryResponseDto } from './dto/summary-response.dto';
 import { ArticleService } from './articles.service';
 import { Article } from './schemas/article.schema';
 
@@ -27,8 +28,8 @@ export class ArticlesController {
   }
 
   @Get('/get-summary/:id')
-  async getSummary(@Param('id') id: string): Promise<string> {
-    return this.articlesService.getSummary(id);
+  async getSummary(@Param('id') id: string): Promise<SummaryResponseDto> {
+    return this.articlesService.getSummaryWithDetails(id);
   }
 
   @Get('by-title/:title')

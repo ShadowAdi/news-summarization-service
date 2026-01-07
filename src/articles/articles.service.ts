@@ -1,15 +1,31 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Article, ArticleDocument } from './schemas/article.schema';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
+import { SummaryResponseDto } from './dto/summary-response.dto';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { OpenRouter } from '@openrouter/sdk';
 
 @Injectable()
 export class ArticleService {
+  private openai: OpenRouter;
+
   constructor(
     @InjectModel(Article.name) private articleModel: Model<ArticleDocument>,
-  ) {}
+  ) {
+    try {
+      this.openai = new OpenRouter({
+        apiKey: process.env.OPENROUTER_API_KEY || '',
+      });
+    } catch (error) {
+      throw new Error(`Failed to initialize OpenAI client: ${error}`);
+    }
+  }
 
   async create(createArticleDto: CreateArticleDto): Promise<Article> {
     const createdArticle = new this.articleModel(createArticleDto);
@@ -56,7 +72,148 @@ export class ArticleService {
       throw new NotFoundException(`Article with ID "${id}" not found`);
     }
 
-    return '';
+    try {
+      // Extract content from the URL
+      const content = await this.extractContentFromUrl(article.url);
+
+      if (!content) {
+        throw new Error('Unable to extract content from the provided URL');
+      }
+
+      // Generate summary using OpenRouter
+      const summary = await this.generateSummary(content);
+
+      // Update the article with the generated summary
+      await this.articleModel.findByIdAndUpdate(id, { summary });
+
+      return summary;
+    } catch (error) {
+      throw new Error(`Failed to generate summary: ${error}`);
+    }
+  }
+
+  private async extractContentFromUrl(url: string): Promise<string> {
+    try {
+      const response = await axios.get<string>(url, {
+        timeout: 10000,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
+      });
+
+      const $ = cheerio.load(response.data);
+
+      // Remove unwanted elements
+      $(
+        'script, style, nav, footer, header, aside, .advertisement, .ads',
+      ).remove();
+
+      // Try to extract main content using common selectors
+      let content = '';
+      const contentSelectors = [
+        'article',
+        '.article-content',
+        '.post-content',
+        '.entry-content',
+        '.content',
+        'main',
+        '.main-content',
+      ];
+
+      for (const selector of contentSelectors) {
+        const element = $(selector);
+        if (element.length > 0) {
+          content = element.text().trim();
+          if (content.length > 500) {
+            // Ensure we have substantial content
+            break;
+          }
+        }
+      }
+
+      // Fallback: extract all paragraph text
+      if (!content || content.length < 500) {
+        content = $('p')
+          .map((_, el) => $(el).text().trim())
+          .get()
+          .join(' ');
+      }
+
+      // Clean up the content
+      content = content.replace(/\s+/g, ' ').trim();
+
+      // Limit content length to avoid token limits (approximately 3000 characters)
+      if (content.length > 3000) {
+        content = content.substring(0, 3000) + '...';
+      }
+
+      return content;
+    } catch (error) {
+      throw new Error(`Failed to extract content from URL: ${error}`);
+    }
+  }
+
+  private async generateSummary(content: string): Promise<string> {
+    try {
+      if (!this.openai) {
+        throw new Error('OpenAI client not initialized');
+      }
+
+      const prompt = `Please summarize the following news article in 60-80 words. Maintain the original language of the article (do not translate). Provide a concise, informative summary that captures the main points:\n\n${content}`;
+
+      const completion = await this.openai.chat.send({
+        model: 'meta-llama/llama-3.2-3b-instruct:free', // Using a free model for testing
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: false,
+      });
+
+      const summary = completion.choices[0].message.content;
+
+      if (!summary) {
+        throw new Error('No summary generated from OpenRouter');
+      }
+
+      // Handle both string and array content types
+      let summaryText: string;
+      if (typeof summary === 'string') {
+        summaryText = summary;
+      } else if (Array.isArray(summary)) {
+        // Extract text from content items array
+        summaryText = summary
+          .filter((item) => item.type === 'text')
+          .map((item) => (item as any).text)
+          .join(' ');
+      } else {
+        throw new Error('Unexpected summary format from OpenRouter');
+      }
+
+      return summaryText;
+    } catch (error) {
+      throw new Error(
+        `Failed to generate summary with OpenRouter: ${error.message}`,
+      );
+    }
+  }
+
+  async getSummaryWithDetails(id: string): Promise<SummaryResponseDto> {
+    const summary = await this.getSummary(id);
+    const article = await this.articleModel.findById(id).exec();
+    if (!article) {
+      throw new NotFoundException(`Article with ID "${id}" not found`);
+    }
+
+    return {
+      id: article._id.toString(),
+      title: article.title,
+      url: article.url,
+      summary: summary,
+    };
   }
 
   async remove(id: string): Promise<Article> {

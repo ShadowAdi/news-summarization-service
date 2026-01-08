@@ -10,10 +10,12 @@ import { SummaryResponseDto } from './dto/summary-response.dto';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { OpenRouter } from '@openrouter/sdk';
+import { SarvamAIClient } from 'sarvamai';
 
 @Injectable()
 export class ArticleService {
   private openai: OpenRouter;
+  private saravamai: SarvamAIClient;
 
   constructor(
     @InjectModel(Article.name) private articleModel: Model<ArticleDocument>,
@@ -21,6 +23,10 @@ export class ArticleService {
     try {
       this.openai = new OpenRouter({
         apiKey: process.env.OPENROUTER_API_KEY || '',
+      });
+      this.saravamai = new SarvamAIClient({
+        apiSubscriptionKey:
+          process.env.NEWS_SUMMARIZATION_SARVAMA_API_KEY || '',
       });
     } catch (error) {
       throw new Error(`Failed to initialize OpenAI client: ${error}`);
@@ -162,32 +168,45 @@ export class ArticleService {
 
       const prompt = `Please summarize the following news article in 60-80 words. Maintain the original language of the article (do not translate). Provide a concise, informative summary that captures the main points:\n\n${content}`;
 
-      const completion = await this.openai.chat.send({
-        model: 'deepseek/deepseek-v3.2', // Using a free model for testing
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        stream: false,
-      });
-
-      const summary = completion.choices[0].message.content;
+      let completion;
+      let summary: string | [{ type: string; text: string }];
+      if (process.env.WHICH_ONE === 'sarvama') {
+        completion = await this.saravamai.chat.completions({
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+        });
+        summary = completion.choices[0].message.content as string;
+      } else {
+        completion = await this.openai.chat.send({
+          model: 'deepseek/deepseek-v3.2',
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          stream: false,
+        });
+        summary = completion.choices[0].message.content as string;
+      }
 
       if (!summary) {
         throw new Error('No summary generated from OpenRouter');
       }
 
-      // Handle both string and array content types
       let summaryText: string;
       if (typeof summary === 'string') {
         summaryText = summary;
       } else if (Array.isArray(summary)) {
         // Extract text from content items array
-        summaryText = summary
+        const contentArray = summary as Array<{ type: string; text: string }>;
+        summaryText = contentArray
           .filter((item) => item.type === 'text')
-          .map((item) => (item as any).text)
+          .map((item) => item.text)
           .join(' ');
       } else {
         throw new Error('Unexpected summary format from OpenRouter');

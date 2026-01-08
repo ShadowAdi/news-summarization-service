@@ -187,6 +187,9 @@ export class ArticleService {
               content: prompt,
             },
           ],
+          temperature: 0.5,
+          top_p: 1,
+          max_tokens: 1000,
         });
         console.log(
           `Saravam Response ${completion.choices[0].message.content}`,

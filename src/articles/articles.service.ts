@@ -86,6 +86,8 @@ export class ArticleService {
         throw new Error('Unable to extract content from the provided URL');
       }
 
+      console.log('CONTENT SAMPLE:', content.slice(0, 300));
+
       // Generate summary using OpenRouter
       const summary = await this.generateSummary(content);
 

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -89,6 +89,8 @@ export class ArticleService {
       // Generate summary using OpenRouter
       const summary = await this.generateSummary(content);
 
+      console.log('update summary ', summary);
+
       // Update the article with the generated summary
       await this.articleModel.findByIdAndUpdate(id, { summary });
 
@@ -161,6 +163,8 @@ export class ArticleService {
   }
 
   private async generateSummary(content: string): Promise<string> {
+    console.log('generateSummary called');
+    console.log('WHICH_ONE =', process.env.WHICH_ONE);
     try {
       if (!this.openai) {
         throw new Error('OpenAI client not initialized');
@@ -175,6 +179,7 @@ export class ArticleService {
       let completion;
       let summary: string | [{ type: string; text: string }];
       if (process.env.WHICH_ONE === 'sarvama') {
+        console.log(`Saravam is getting called`);
         completion = await this.saravamai.chat.completions({
           messages: [
             {
@@ -183,20 +188,28 @@ export class ArticleService {
             },
           ],
         });
+        console.log(
+          `Saravam Response ${completion.choices[0].message.content}`,
+        );
         summary = completion.choices[0].message.content as string;
       } else {
-        completion = await this.openai.chat.send({
-          model: 'deepseek/deepseek-v3.2',
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          stream: false,
-        });
-        summary = completion.choices[0].message.content as string;
+        console.log(`Saravam is not getting called`);
+
+        return '';
       }
+      // } else {
+      //   completion = await this.openai.chat.send({
+      //     model: 'deepseek/deepseek-v3.2',
+      //     messages: [
+      //       {
+      //         role: 'user',
+      //         content: prompt,
+      //       },
+      //     ],
+      //     stream: false,
+      //   });
+      //   summary = completion.choices[0].message.content as string;
+      // }
 
       if (!summary) {
         throw new Error('No summary generated from OpenRouter');
@@ -205,6 +218,7 @@ export class ArticleService {
       let summaryText: string;
       if (typeof summary === 'string') {
         summaryText = summary;
+        console.log(`Saravam text ${summaryText}`);
       } else if (Array.isArray(summary)) {
         // Extract text from content items array
         const contentArray = summary as Array<{ type: string; text: string }>;

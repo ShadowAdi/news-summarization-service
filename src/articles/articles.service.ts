@@ -166,6 +166,10 @@ export class ArticleService {
         throw new Error('OpenAI client not initialized');
       }
 
+      if (!this.saravamai) {
+        throw new Error('SarvamAI client not initialized');
+      }
+
       const prompt = `Please summarize the following news article in 60-80 words. Maintain the original language of the article (do not translate). Provide a concise, informative summary that captures the main points:\n\n${content}`;
 
       let completion;
